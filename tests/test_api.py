@@ -131,6 +131,11 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.get_json()["error"]["code"], "ANALYSIS_NOT_FOUND")
 
+    def test_root_serves_the_match_search_interface(self):
+        with self.client.get("/") as response:
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('id="match-search"', response.get_data(as_text=True))
+
 
 if __name__ == "__main__":
     unittest.main()

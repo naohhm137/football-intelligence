@@ -1,0 +1,28 @@
+:root {
+  color-scheme: dark;
+  --ink-950: #050b0c;
+  --ink-900: #081312;
+  --ink-850: #0c1b18;
+  --ink-800: #10231e;
+  --pitch-700: #164f3b;
+  --pitch-500: #2d8a62;
+  --flood-400: #edc477;
+  --flood-300: #f4d89b;
+  --data-400: #71b7d3;
+  --success-400: #65bd8c;
+  --warning-400: #e4b45f;
+  --danger-400: #da776f;
+  --text-100: #f2f3ed;
+  --text-300: #c1cbc4;
+  --text-500: #82958c;
+  --line: rgb(193 203 196 / 0.16);
+  --line-strong: rgb(237 196 119 / 0.32);
+  --surface: rgb(8 19 18 / 0.94);
+  --surface-soft: rgb(12 27 24 / 0.82);
+  --radius: 14px;
+  --shadow-raised: 0 28px 80px rgb(1 9 8 / 0.52);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --font-ui: "Bahnschrift", "Arial Narrow", "Noto Sans SC", sans-serif;
+  --font-body: "Segoe UI", "Noto Sans SC", sans-serif;
+}

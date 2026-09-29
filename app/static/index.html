@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#050b0c">
+    <meta name="description" content="输入两支球队和开赛时间，自动汇总赛前证据、概率与亚盘研究结果。">
+    <title>赛前研究室</title>
+    <link rel="preload" href="/static/assets/stadium-night.png" as="image">
+    <link rel="stylesheet" href="/static/css/tokens.css">
+    <link rel="stylesheet" href="/static/css/app.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="masthead">
+        <a class="brand" href="#match-search" aria-label="返回比赛搜索">赛前研究室</a>
+        <p class="service-state" id="service-state" data-state="checking" aria-live="polite">正在检查数据服务</p>
+      </header>
+
+      <main>
+        <section class="hero" aria-labelledby="page-title">
+          <div class="hero-grid">
+            <div class="hero-copy">
+              <h1 id="page-title">把一场比赛，拆成可验证的证据</h1>
+              <p>输入两支球队和开赛时间，其余交给实时情报与量化模型。</p>
+            </div>
+
+            <section class="control-desk" id="match-search" aria-labelledby="search-title">
+              <svg class="pitch-map" viewBox="0 0 720 560" aria-hidden="true">
+                <rect x="1" y="1" width="718" height="558" fill="none" stroke="currentColor" stroke-width="2" />
+                <path d="M360 0v560M1 86h110v388H1M719 86H609v388h110" fill="none" stroke="currentColor" stroke-width="2" />
+                <circle cx="360" cy="280" r="72" fill="none" stroke="currentColor" stroke-width="2" />
+                <circle cx="360" cy="280" r="4" fill="currentColor" />
+              </svg>
+
+              <div class="control-content">
+                <h2 id="search-title">开始一场赛前扫描</h2>
+                <p class="control-intro">不用填写赔率。系统会自动寻找赛程、球队状态、伤停、天气、新闻和可用盘口。</p>
+
+                <form class="match-form" novalidate>
+                  <div class="field-pair">
+                    <div class="field">
+                      <label for="home-team">主队</label>
+                      <input id="home-team" name="home_team" type="text" autocomplete="off" placeholder="例如：阿森纳" required>
+                    </div>
+                    <div class="field">
+                      <label for="away-team">客队</label>
+                      <input id="away-team" name="away_team" type="text" autocomplete="off" placeholder="例如：切尔西" required>
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <label for="kickoff-local">开赛时间</label>
+                    <input id="kickoff-local" name="kickoff_local" type="datetime-local" required>
+                  </div>
+
+                  <button class="submit-button" type="submit">
+                    <span>开始情报扫描</span>
+                  </button>
+                  <p class="form-message" id="form-message" role="alert"></p>
+                </form>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <div class="content-area">
+          <section class="research-progress" id="research-progress" aria-live="polite" aria-labelledby="progress-title" hidden>
+            <h2 id="progress-title">正在核验比赛信息</h2>
+            <ol class="source-list" id="source-list"></ol>
+          </section>
+
+          <section class="analysis-result" id="analysis-result" aria-live="polite" aria-labelledby="result-title" hidden>
+            <h2 id="result-title">比赛研究结果</h2>
+            <div id="result-summary"></div>
+            <section aria-labelledby="evidence-title">
+              <h3 id="evidence-title">证据来源</h3>
+              <ul class="evidence-list" id="evidence-list"></ul>
+            </section>
+          </section>
+        </div>
+      </main>
+
+      <footer class="site-footer">
+        <p>研究模型尚未通过实盘门槛。任何输出都不是盈利承诺。</p>
+      </footer>
+    </div>
+  </body>
+</html>

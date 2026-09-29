@@ -26,6 +26,10 @@ def _report_json(report, explanation: AiExplanation | None) -> dict[str, Any]:
 
 
 def register_routes(app: Flask) -> None:
+    @app.get("/")
+    def index():
+        return app.send_static_file("index.html")
+
     @app.post("/api/analyze")
     def analyze():
         payload = request.get_json(silent=True)
