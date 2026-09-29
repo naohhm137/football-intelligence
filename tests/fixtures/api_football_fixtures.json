@@ -1,0 +1,88 @@
+{
+  "get": "fixtures",
+  "parameters": {
+    "from": "2026-10-02",
+    "to": "2026-10-04",
+    "timezone": "UTC"
+  },
+  "errors": [],
+  "results": 3,
+  "paging": {
+    "current": 1,
+    "total": 1
+  },
+  "response": [
+    {
+      "fixture": {
+        "id": 991,
+        "referee": null,
+        "timezone": "UTC",
+        "date": "2026-10-03T12:30:00+00:00",
+        "timestamp": 1791030600,
+        "periods": {"first": null, "second": null},
+        "venue": {"id": 556, "name": "Old Trafford", "city": "Manchester"},
+        "status": {"long": "Not Started", "short": "NS", "elapsed": null}
+      },
+      "league": {
+        "id": 39,
+        "name": "Premier League",
+        "country": "England",
+        "logo": "https://media.api-sports.io/football/leagues/39.png",
+        "flag": "https://media.api-sports.io/flags/gb.svg",
+        "season": 2026,
+        "round": "Regular Season - 7",
+        "standings": true
+      },
+      "teams": {
+        "home": {"id": 33, "name": "Manchester United", "logo": "https://media.api-sports.io/football/teams/33.png", "winner": null},
+        "away": {"id": 49, "name": "Chelsea", "logo": "https://media.api-sports.io/football/teams/49.png", "winner": null}
+      },
+      "goals": {"home": null, "away": null},
+      "score": {
+        "halftime": {"home": null, "away": null},
+        "fulltime": {"home": null, "away": null},
+        "extratime": {"home": null, "away": null},
+        "penalty": {"home": null, "away": null}
+      }
+    },
+    {
+      "fixture": {
+        "id": 992,
+        "referee": null,
+        "timezone": "UTC",
+        "date": "2026-10-03T12:30:00+00:00",
+        "timestamp": 1791030600,
+        "periods": {"first": null, "second": null},
+        "venue": {"id": 777, "name": "Bramall Lane", "city": "Sheffield"},
+        "status": {"long": "Not Started", "short": "NS", "elapsed": null}
+      },
+      "league": {"id": 40, "name": "Championship", "country": "England", "season": 2026, "round": "Regular Season - 10", "standings": true},
+      "teams": {
+        "home": {"id": 62, "name": "Sheffield United", "logo": "https://media.api-sports.io/football/teams/62.png", "winner": null},
+        "away": {"id": 50, "name": "Manchester City", "logo": "https://media.api-sports.io/football/teams/50.png", "winner": null}
+      },
+      "goals": {"home": null, "away": null},
+      "score": {"halftime": {"home": null, "away": null}, "fulltime": {"home": null, "away": null}, "extratime": {"home": null, "away": null}, "penalty": {"home": null, "away": null}}
+    },
+    {
+      "fixture": {
+        "id": 993,
+        "referee": null,
+        "timezone": "UTC",
+        "date": "2026-10-03T13:00:00+00:00",
+        "timestamp": 1791032400,
+        "periods": {"first": null, "second": null},
+        "venue": {"id": 888, "name": "St James' Park", "city": "Newcastle"},
+        "status": {"long": "Not Started", "short": "NS", "elapsed": null}
+      },
+      "league": {"id": 39, "name": "Premier League", "country": "England", "season": 2026, "round": "Regular Season - 7", "standings": true},
+      "teams": {
+        "home": {"id": 34, "name": "Newcastle United", "logo": "https://media.api-sports.io/football/teams/34.png", "winner": null},
+        "away": {"id": 46, "name": "Leicester City", "logo": "https://media.api-sports.io/football/teams/46.png", "winner": null}
+      },
+      "goals": {"home": null, "away": null},
+      "score": {"halftime": {"home": null, "away": null}, "fulltime": {"home": null, "away": null}, "extratime": {"home": null, "away": null}, "penalty": {"home": null, "away": null}}
+    }
+  ]
+}
+
