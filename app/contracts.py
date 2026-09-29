@@ -183,10 +183,14 @@ class ResearchBundle:
 @dataclass(frozen=True)
 class QuantitativeReport:
     result_probabilities: Mapping[str, float]
+    probability_basis: str = "contextual_poisson_research_proxy"
     asian_state_probabilities: Mapping[str, float] = field(default_factory=dict)
     asian_ev: float | None = None
+    asian_line: float | None = None
+    home_ev: float | None = None
+    away_ev: float | None = None
     relative_direction: str | None = None
-    model_version: str = "v8"
+    model_version: str = "8.0.0-research"
     validated_for_betting: bool = False
 
 

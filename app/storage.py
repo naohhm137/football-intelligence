@@ -4,6 +4,7 @@ import dataclasses
 import hashlib
 import json
 import sqlite3
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -50,6 +51,7 @@ class Store:
     def __init__(self, connection: Any, dialect: str):
         self._connection = connection
         self._dialect = dialect
+        self._lock = threading.RLock()
 
     @classmethod
     def connect(cls, database_url: str) -> "Store":
@@ -58,7 +60,7 @@ class Store:
             path = ":memory:" if raw_path == ":memory:" else str(Path(raw_path))
             if path != ":memory:":
                 Path(path).parent.mkdir(parents=True, exist_ok=True)
-            connection = sqlite3.connect(path)
+            connection = sqlite3.connect(path, check_same_thread=False)
             connection.row_factory = sqlite3.Row
             store = cls(connection, "sqlite")
         elif urlparse(database_url).scheme in {"postgres", "postgresql"}:
@@ -120,18 +122,20 @@ class Store:
                 "payload_json=EXCLUDED.payload_json, expires_at=EXCLUDED.expires_at, "
                 "created_at=EXCLUDED.created_at"
             )
-        self._execute(sql, (key, payload, expires_at, _now_utc())).close()
-        self._connection.commit()
+        with self._lock:
+            self._execute(sql, (key, payload, expires_at, _now_utc())).close()
+            self._connection.commit()
 
     def get_cache(self, key: str, now: str) -> Any | None:
         current_time = _parse_utc(now)
         marker = self._placeholder()
-        cursor = self._execute(
-            f"SELECT payload_json, expires_at FROM cache_entries WHERE cache_key={marker}",
-            (key,),
-        )
-        row = cursor.fetchone()
-        cursor.close()
+        with self._lock:
+            cursor = self._execute(
+                f"SELECT payload_json, expires_at FROM cache_entries WHERE cache_key={marker}",
+                (key,),
+            )
+            row = cursor.fetchone()
+            cursor.close()
         if row is None or _parse_utc(self._row_value(row, "expires_at")) <= current_time:
             return None
         return json.loads(self._row_value(row, "payload_json"))
@@ -168,18 +172,20 @@ class Store:
                 "error_code=EXCLUDED.error_code, quota_remaining=EXCLUDED.quota_remaining, "
                 "updated_at=EXCLUDED.updated_at"
             )
-        self._execute(sql, values).close()
-        self._connection.commit()
+        with self._lock:
+            self._execute(sql, values).close()
+            self._connection.commit()
 
     def get_source_status(self, source: str) -> dict[str, Any] | None:
         marker = self._placeholder()
-        cursor = self._execute(
-            f"SELECT source, status, fetched_at, fresh_until, request_url, error_code, quota_remaining, updated_at "
-            f"FROM source_health WHERE source={marker}",
-            (source,),
-        )
-        row = cursor.fetchone()
-        cursor.close()
+        with self._lock:
+            cursor = self._execute(
+                f"SELECT source, status, fetched_at, fresh_until, request_url, error_code, quota_remaining, updated_at "
+                f"FROM source_health WHERE source={marker}",
+                (source,),
+            )
+            row = cursor.fetchone()
+            cursor.close()
         return dict(row) if row is not None else None
 
     def save_analysis(
@@ -193,48 +199,50 @@ class Store:
             "INSERT INTO analyses (analysis_id, payload_json, created_at) "
             f"VALUES ({marker}, {marker}, {marker}) ON CONFLICT(analysis_id) DO NOTHING"
         )
-        self._execute(sql, (analysis_id, payload, _now_utc())).close()
+        with self._lock:
+            self._execute(sql, (analysis_id, payload, _now_utc())).close()
 
-        evidence_sql = (
-            "INSERT INTO evidence (analysis_id, url, title, payload_json) "
-            f"VALUES ({marker}, {marker}, {marker}, {marker}) "
-            "ON CONFLICT(analysis_id, url, title) DO NOTHING"
-        )
-        for item in bundle.evidence:
-            self._execute(
-                evidence_sql,
-                (analysis_id, item.url, item.title, _canonical_json(item)),
-            ).close()
+            evidence_sql = (
+                "INSERT INTO evidence (analysis_id, url, title, payload_json) "
+                f"VALUES ({marker}, {marker}, {marker}, {marker}) "
+                "ON CONFLICT(analysis_id, url, title) DO NOTHING"
+            )
+            for item in bundle.evidence:
+                self._execute(
+                    evidence_sql,
+                    (analysis_id, item.url, item.title, _canonical_json(item)),
+                ).close()
 
-        odds_sql = (
-            "INSERT INTO odds_snapshots "
-            "(analysis_id, bookmaker, market, captured_at, payload_json) "
-            f"VALUES ({marker}, {marker}, {marker}, {marker}, {marker}) "
-            "ON CONFLICT(analysis_id, bookmaker, market, captured_at) DO NOTHING"
-        )
-        for snapshot in bundle.odds:
-            self._execute(
-                odds_sql,
-                (
-                    analysis_id,
-                    snapshot.bookmaker,
-                    snapshot.market,
-                    snapshot.captured_at,
-                    _canonical_json(snapshot),
-                ),
-            ).close()
+            odds_sql = (
+                "INSERT INTO odds_snapshots "
+                "(analysis_id, bookmaker, market, captured_at, payload_json) "
+                f"VALUES ({marker}, {marker}, {marker}, {marker}, {marker}) "
+                "ON CONFLICT(analysis_id, bookmaker, market, captured_at) DO NOTHING"
+            )
+            for snapshot in bundle.odds:
+                self._execute(
+                    odds_sql,
+                    (
+                        analysis_id,
+                        snapshot.bookmaker,
+                        snapshot.market,
+                        snapshot.captured_at,
+                        _canonical_json(snapshot),
+                    ),
+                ).close()
 
-        self._connection.commit()
+            self._connection.commit()
         return analysis_id
 
     def get_analysis(self, analysis_id: str) -> dict[str, Any] | None:
         marker = self._placeholder()
-        cursor = self._execute(
-            f"SELECT payload_json FROM analyses WHERE analysis_id={marker}",
-            (analysis_id,),
-        )
-        row = cursor.fetchone()
-        cursor.close()
+        with self._lock:
+            cursor = self._execute(
+                f"SELECT payload_json FROM analyses WHERE analysis_id={marker}",
+                (analysis_id,),
+            )
+            row = cursor.fetchone()
+            cursor.close()
         if row is None:
             return None
         document = json.loads(self._row_value(row, "payload_json"))
@@ -245,23 +253,26 @@ class Store:
         if limit < 1 or limit > 1000:
             raise ValueError("limit 必须在 1 到 1000 之间")
         marker = self._placeholder()
-        cursor = self._execute(
-            f"SELECT analysis_id FROM analyses ORDER BY created_at DESC LIMIT {marker}",
-            (limit,),
-        )
-        rows = cursor.fetchall()
-        cursor.close()
+        with self._lock:
+            cursor = self._execute(
+                f"SELECT analysis_id FROM analyses ORDER BY created_at DESC LIMIT {marker}",
+                (limit,),
+            )
+            rows = cursor.fetchall()
+            cursor.close()
         return [self._row_value(row, "analysis_id") for row in rows]
 
     def list_evidence(self, analysis_id: str) -> list[dict[str, Any]]:
         marker = self._placeholder()
-        cursor = self._execute(
-            f"SELECT payload_json FROM evidence WHERE analysis_id={marker} ORDER BY url, title",
-            (analysis_id,),
-        )
-        rows = cursor.fetchall()
-        cursor.close()
+        with self._lock:
+            cursor = self._execute(
+                f"SELECT payload_json FROM evidence WHERE analysis_id={marker} ORDER BY url, title",
+                (analysis_id,),
+            )
+            rows = cursor.fetchall()
+            cursor.close()
         return [json.loads(self._row_value(row, "payload_json")) for row in rows]
 
     def close(self) -> None:
-        self._connection.close()
+        with self._lock:
+            self._connection.close()

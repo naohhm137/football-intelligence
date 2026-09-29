@@ -1,6 +1,7 @@
 import json
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from app.contracts import (
@@ -126,6 +127,22 @@ class StorageTests(unittest.TestCase):
         health = self.store.get_source_status("official-news")
         self.assertEqual(health["status"], "ok")
         self.assertNotIn("api_key", json.dumps(health))
+
+    def test_parallel_source_workers_can_share_the_store(self):
+        def write(index):
+            self.store.put_cache(
+                f"parallel:{index}",
+                {"index": index},
+                "2026-09-29T02:00:00Z",
+            )
+
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            list(executor.map(write, range(12)))
+
+        self.assertEqual(
+            self.store.get_cache("parallel:11", now="2026-09-29T01:00:00Z"),
+            {"index": 11},
+        )
 
 
 if __name__ == "__main__":
