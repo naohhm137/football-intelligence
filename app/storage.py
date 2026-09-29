@@ -188,6 +188,17 @@ class Store:
             cursor.close()
         return dict(row) if row is not None else None
 
+    def list_source_statuses(self) -> list[dict[str, Any]]:
+        with self._lock:
+            cursor = self._execute(
+                "SELECT source, status, fetched_at, fresh_until, request_url, "
+                "error_code, quota_remaining, updated_at "
+                "FROM source_health ORDER BY source"
+            )
+            rows = cursor.fetchall()
+            cursor.close()
+        return [dict(row) for row in rows]
+
     def save_analysis(
         self, bundle: ResearchBundle, report: AnalysisReport
     ) -> str:
