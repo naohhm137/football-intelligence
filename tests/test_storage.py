@@ -45,7 +45,16 @@ def make_bundle_and_report():
     bundle = ResearchBundle(
         query=query,
         fixture=fixture,
-        source_results={"news": SourceResult(value=[evidence], status=status)},
+        source_results={
+            "news": SourceResult(
+                value=[evidence],
+                status="ok",
+                source=status.source,
+                fetched_at=status.fetched_at,
+                fresh_until=status.fresh_until,
+                request_url=status.request_url,
+            )
+        },
         evidence=(evidence,),
         created_at="2026-10-03T09:00:00Z",
         completeness=0.8,

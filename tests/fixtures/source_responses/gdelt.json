@@ -1,0 +1,26 @@
+{
+  "articles": [
+    {
+      "url": "https://club.test/team-news",
+      "url_mobile": "",
+      "title": "Official team news before the match",
+      "seendate": "20261003T090000Z",
+      "socialimage": "",
+      "domain": "club.test",
+      "language": "English",
+      "sourcecountry": "United Kingdom"
+    },
+    {
+      "url": "",
+      "title": "Missing URL must be rejected",
+      "seendate": "20261003T091000Z",
+      "domain": "bad.test"
+    },
+    {
+      "url": "https://bad.test/no-date",
+      "title": "Missing publication time must be rejected",
+      "domain": "bad.test"
+    }
+  ]
+}
+

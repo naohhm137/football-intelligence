@@ -1,0 +1,37 @@
+{
+  "standings": {
+    "response": [{
+      "league": {
+        "standings": [[
+          {"rank": 4, "team": {"id": 33, "name": "Manchester United"}},
+          {"rank": 8, "team": {"id": 49, "name": "Chelsea"}}
+        ]]
+      }
+    }]
+  },
+  "home_recent": {
+    "response": [
+      {"teams": {"home": {"id": 33}, "away": {"id": 40}}, "goals": {"home": 2, "away": 0}},
+      {"teams": {"home": {"id": 50}, "away": {"id": 33}}, "goals": {"home": 1, "away": 1}}
+    ]
+  },
+  "away_recent": {
+    "response": [
+      {"teams": {"home": {"id": 49}, "away": {"id": 42}}, "goals": {"home": 0, "away": 1}},
+      {"teams": {"home": {"id": 45}, "away": {"id": 49}}, "goals": {"home": 1, "away": 3}}
+    ]
+  },
+  "injuries": {
+    "response": [
+      {"player": {"id": 7, "name": "Home Player", "reason": "Hamstring"}, "team": {"id": 33, "name": "Manchester United"}},
+      {"player": {"id": 8, "name": "Away Player", "reason": "Knock"}, "team": {"id": 49, "name": "Chelsea"}}
+    ]
+  },
+  "lineups": {
+    "response": [
+      {"team": {"id": 33, "name": "Manchester United"}, "formation": "4-2-3-1", "startXI": []},
+      {"team": {"id": 49, "name": "Chelsea"}, "formation": "4-3-3", "startXI": []}
+    ]
+  }
+}
+

@@ -82,7 +82,24 @@ class SourceStatus:
 @dataclass(frozen=True)
 class SourceResult(Generic[T]):
     value: T
-    status: SourceStatus
+    status: SourceState
+    source: str
+    fetched_at: str
+    fresh_until: str | None = None
+    request_url: str | None = None
+    error_code: str | None = None
+    quota_remaining: int | None = None
+
+    def to_status(self) -> SourceStatus:
+        return SourceStatus(
+            source=self.source,
+            status=self.status,
+            fetched_at=self.fetched_at,
+            fresh_until=self.fresh_until,
+            request_url=self.request_url,
+            error_code=self.error_code,
+            quota_remaining=self.quota_remaining,
+        )
 
 
 @dataclass(frozen=True)
@@ -98,6 +115,10 @@ class FixtureCandidate:
     venue_longitude: float | None = None
     source_url: str | None = None
     match_score: float = 0.0
+    home_team_id: int | None = None
+    away_team_id: int | None = None
+    league_id: int | None = None
+    season: int | None = None
 
 
 @dataclass(frozen=True)

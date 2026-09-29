@@ -110,6 +110,9 @@ class ApiFootballClient:
 
         raise ApiFootballError("API_FOOTBALL_CONNECTION_FAILED") from last_error
 
+    def get_json(self, path: str, *, params: dict[str, str]) -> dict[str, Any]:
+        return self._request_json(path, params=params)
+
     @staticmethod
     def parse_fixtures(payload: dict[str, Any]) -> list[FixtureCandidate]:
         response = payload.get("response")
@@ -138,6 +141,10 @@ class ApiFootballClient:
                         country=(str(league.get("country")).strip() if league.get("country") else None),
                         venue=", ".join(venue_parts) or None,
                         source_url=f"{API_BASE_URL}/fixtures?id={int(fixture['id'])}",
+                        home_team_id=int(teams["home"]["id"]),
+                        away_team_id=int(teams["away"]["id"]),
+                        league_id=int(league["id"]),
+                        season=int(league["season"]),
                     )
                 )
             except (KeyError, TypeError, ValueError) as exc:
