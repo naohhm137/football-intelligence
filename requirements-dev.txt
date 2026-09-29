@@ -1,0 +1,5 @@
+-r requirements.txt
+beautifulsoup4~=4.13
+PyYAML~=6.0
+coverage~=7.10
+waitress~=3.0
