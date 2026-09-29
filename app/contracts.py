@@ -208,7 +208,7 @@ class AnalysisReport:
 @dataclass(frozen=True)
 class AiHealth:
     available: bool
-    configured_model: str
+    configured_model: str | None
     discovered_models: tuple[str, ...] = ()
     error_code: str | None = None
 
