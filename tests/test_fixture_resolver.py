@@ -72,6 +72,21 @@ class ApiFootballClientTests(unittest.TestCase):
         self.assertEqual(transport.calls[0]["params"]["timezone"], "UTC")
         self.assertEqual(first[0].venue, "Old Trafford, Manchester")
 
+    def test_fixture_lookup_uses_the_provider_supported_date_filter(self):
+        transport = FakeTransport([FakeResponse(self.payload)])
+        client = ApiFootballClient(
+            "provider-secret", store=self.store, transport=transport, now=self.now
+        )
+
+        client.find_fixtures(
+            MatchQuery("Man United", "Chelsea", "2026-10-03T12:30:00Z")
+        )
+
+        self.assertEqual(
+            transport.calls[0]["params"],
+            {"date": "2026-10-03", "timezone": "UTC"},
+        )
+
     def test_client_does_not_retry_4xx(self):
         transport = FakeTransport([FakeResponse({"errors": {"token": "bad"}}, 403)])
         client = ApiFootballClient("provider-secret", transport=transport, now=self.now)

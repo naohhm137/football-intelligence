@@ -50,9 +50,8 @@ class ApiFootballClient:
 
     def find_fixtures(self, query: MatchQuery) -> list[FixtureCandidate]:
         kickoff = _parse_datetime(query.kickoff_utc)
-        first_day = (kickoff - timedelta(days=1)).date().isoformat()
-        last_day = (kickoff + timedelta(days=1)).date().isoformat()
-        cache_key = f"api-football:fixtures:{first_day}:{last_day}:UTC"
+        fixture_day = kickoff.date().isoformat()
+        cache_key = f"api-football:fixtures:{fixture_day}:UTC"
         now = self._now().astimezone(timezone.utc)
 
         if self._store is not None:
@@ -62,7 +61,7 @@ class ApiFootballClient:
 
         payload = self._request_json(
             "/fixtures",
-            params={"from": first_day, "to": last_day, "timezone": "UTC"},
+            params={"date": fixture_day, "timezone": "UTC"},
         )
         if self._store is not None:
             self._store.put_cache(
