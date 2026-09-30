@@ -44,7 +44,7 @@ class AilindoClient:
             "Accept": "application/json",
         }
 
-    def _completion_content(self, payload: dict[str, Any]) -> str:
+    def _completion_content_once(self, payload: dict[str, Any]) -> str:
         request_payload = {**payload, "stream": True}
         response = self._transport.post(
             f"{self._base_url}/chat/completions",
@@ -58,22 +58,40 @@ class AilindoClient:
 
         if hasattr(response, "iter_lines"):
             fragments = []
-            for raw_line in response.iter_lines(decode_unicode=True):
-                if isinstance(raw_line, bytes):
-                    raw_line = raw_line.decode("utf-8")
-                line = str(raw_line).strip()
-                if not line.startswith("data:"):
-                    continue
-                data = line.removeprefix("data:").strip()
+            data_lines = []
+
+            def consume_event() -> bool:
+                if not data_lines:
+                    return False
+                data = "\n".join(data_lines)
                 if data == "[DONE]":
-                    break
-                event = json.loads(data)
+                    return True
+                try:
+                    event = json.loads(data)
+                except json.JSONDecodeError:
+                    event = json.loads("".join(data_lines))
                 choices = event.get("choices", [])
                 if not choices:
-                    continue
+                    return False
                 content = choices[0].get("delta", {}).get("content")
                 if isinstance(content, str):
                     fragments.append(content)
+                return False
+
+            done = False
+            for raw_line in response.iter_lines(decode_unicode=True):
+                if isinstance(raw_line, bytes):
+                    raw_line = raw_line.decode("utf-8")
+                line = str(raw_line).rstrip("\r\n")
+                if not line:
+                    done = consume_event()
+                    data_lines.clear()
+                    if done:
+                        break
+                elif line.startswith("data:"):
+                    data_lines.append(line.removeprefix("data:").lstrip())
+            if not done and data_lines:
+                consume_event()
             if fragments:
                 return "".join(fragments)
 
@@ -82,6 +100,12 @@ class AilindoClient:
         if not isinstance(content, str):
             raise TypeError("AI_INVALID_CONTENT")
         return content
+
+    def _completion_content(self, payload: dict[str, Any]) -> str:
+        try:
+            return self._completion_content_once(payload)
+        except json.JSONDecodeError:
+            return self._completion_content_once(payload)
 
     def verify_model(self) -> AiHealth:
         try:
@@ -205,7 +229,8 @@ class AilindoClient:
             "禁止补充未提供的事实，禁止猜测伤停、首发、天气、赔率或投注量。"
             "每个事实性判断必须引用 evidence 中的原始 URL。"
             "不得改变数值概率，不得绕过 NO_BET_UNVALIDATED 或其他 NO_BET 状态。"
-            "只输出JSON对象，字段必须是 summary、supporting_factors、"
+            "只输出单行 JSON（json）对象，禁止换行；所有非 ASCII 字符必须用 JSON 的 "
+            "\\uXXXX 转义。字段必须是 summary、supporting_factors、"
             "opposing_factors、risk_notes、citations。"
         )
         try:
@@ -216,7 +241,8 @@ class AilindoClient:
                         {"role": "system", "content": system_prompt},
                         {
                             "role": "user",
-                            "content": json.dumps(
+                            "content": "Return json only.\n"
+                            + json.dumps(
                                 user_payload, ensure_ascii=False, sort_keys=True
                             ),
                         },

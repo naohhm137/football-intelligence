@@ -52,15 +52,45 @@ class FakeStreamingResponse(FakeResponse):
         self.fragments = fragments
 
     def iter_lines(self, decode_unicode=False):
-        lines = [
-            "data: "
-            + json.dumps(
-                {"choices": [{"delta": {"content": fragment}}]}
+        lines = []
+        for fragment in self.fragments:
+            lines.extend(
+                [
+                    "data: "
+                    + json.dumps(
+                        {"choices": [{"delta": {"content": fragment}}]}
+                    ),
+                    "",
+                ]
             )
-            for fragment in self.fragments
-        ]
         lines.append("data: [DONE]")
         return lines
+
+
+class FakeSplitStreamingResponse(FakeResponse):
+    def __init__(self, content, status_code=200):
+        super().__init__({}, status_code)
+        self.content = content
+
+    def iter_lines(self, decode_unicode=False):
+        event = json.dumps(
+            {"choices": [{"delta": {"content": self.content}}]}
+        )
+        split_at = len(event) // 2
+        return [
+            "data: " + event[:split_at],
+            "data: " + event[split_at:],
+            "",
+            "data: [DONE]",
+        ]
+
+
+class FakeMalformedStreamingResponse(FakeResponse):
+    def __init__(self):
+        super().__init__({})
+
+    def iter_lines(self, decode_unicode=False):
+        return ['data: {"choices":[{"delta":{"content":"unterminated']
 
 
 class FakeTransport:
@@ -126,6 +156,57 @@ class AilindoClientTests(unittest.TestCase):
         self.assertTrue(explanation.trusted_json)
         self.assertEqual(explanation.summary, document["summary"])
 
+    def test_split_sse_data_lines_are_reassembled_before_json_parsing(self):
+        document = {
+            "summary": "Arsenal slightly favoured.",
+            "supporting_factors": [],
+            "opposing_factors": [],
+            "risk_notes": [],
+            "citations": [],
+        }
+        transport = FakeTransport(
+            post_responses=[
+                FakeSplitStreamingResponse(json.dumps(document))
+            ]
+        )
+        client = AilindoClient(
+            "https://gateway.test/v1",
+            "secret-value",
+            "new-provider-model",
+            transport=transport,
+        )
+
+        explanation = client.explain(REPORT)
+
+        self.assertTrue(explanation.trusted_json)
+        self.assertEqual(explanation.summary, document["summary"])
+
+    def test_malformed_stream_is_retried_once(self):
+        document = {
+            "summary": "Arsenal slightly favoured.",
+            "supporting_factors": [],
+            "opposing_factors": [],
+            "risk_notes": [],
+            "citations": [],
+        }
+        transport = FakeTransport(
+            post_responses=[
+                FakeMalformedStreamingResponse(),
+                FakeStreamingResponse([json.dumps(document)]),
+            ]
+        )
+        client = AilindoClient(
+            "https://gateway.test/v1",
+            "secret-value",
+            "new-provider-model",
+            transport=transport,
+        )
+
+        explanation = client.explain(REPORT)
+
+        self.assertEqual(len(transport.post_calls), 2)
+        self.assertTrue(explanation.trusted_json)
+
     def test_configured_model_is_sent_verbatim(self):
         payload = json.dumps(
             {
@@ -162,6 +243,10 @@ class AilindoClientTests(unittest.TestCase):
         self.assertIn("https://source.test/item", combined)
         self.assertIn("禁止补充未提供的事实", combined)
         self.assertIn("NO_BET_UNVALIDATED", combined)
+        self.assertIn("json", combined)
+        self.assertIn("json", messages[1]["content"])
+        self.assertIn("禁止换行", combined)
+        self.assertIn("\\uXXXX", combined)
         self.assertNotIn("secret-value", combined)
 
     def test_invalid_citation_is_rejected(self):
