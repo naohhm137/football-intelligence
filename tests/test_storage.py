@@ -93,6 +93,7 @@ class _FakePostgresConnection:
     def __init__(self, *, closed):
         self.closed = closed
         self.cursor_calls = 0
+        self.commit_calls = 0
         self.cursor_instance = _FakeCursor()
 
     def cursor(self):
@@ -101,31 +102,16 @@ class _FakePostgresConnection:
             raise RuntimeError("closed connection must not be used")
         return self.cursor_instance
 
-
-class _LockSensitivePostgresConnection:
-    def __init__(self):
-        self.closed = False
-        self.pending_statement = False
-        self.commit_calls = 0
-
-    def cursor(self):
-        return self
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, _exc_type, _exc, _traceback):
-        return False
-
-    def execute(self, _sql, _parameters=()):
-        if self.pending_statement:
-            raise RuntimeError("statement timeout waiting for an unreleased DDL lock")
-        self.pending_statement = True
-        return self
-
     def commit(self):
         self.commit_calls += 1
-        self.pending_statement = False
+
+
+class _NoRuntimeDdlPostgresConnection:
+    def __init__(self):
+        self.closed = False
+
+    def cursor(self):
+        raise AssertionError("Postgres migrations must not run during web startup")
 
 
 class StorageTests(unittest.TestCase):
@@ -229,16 +215,14 @@ class StorageTests(unittest.TestCase):
         self.assertEqual(reconnect_calls, [True])
         self.assertEqual(closed_connection.cursor_calls, 0)
         self.assertEqual(replacement.cursor_calls, 1)
+        self.assertEqual(replacement.commit_calls, 1)
         self.assertTrue(replacement.cursor_instance.closed)
 
-    def test_postgres_schema_setup_releases_each_ddl_lock_before_continuing(self):
-        connection = _LockSensitivePostgresConnection()
+    def test_postgres_schema_migrations_are_not_run_during_web_startup(self):
+        connection = _NoRuntimeDdlPostgresConnection()
         store = Store(connection, "postgres")
 
         store._initialize_schema()
-
-        self.assertGreater(connection.commit_calls, 1)
-        self.assertFalse(connection.pending_statement)
 
 
 if __name__ == "__main__":

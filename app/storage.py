@@ -82,26 +82,17 @@ class Store:
         return store
 
     def _initialize_schema(self) -> None:
+        if self._dialect == "postgres":
+            return
         schema = Path(__file__).with_name("schema.sql").read_text(encoding="utf-8")
-        if self._dialect == "sqlite":
-            self._connection.executescript(schema)
-            columns = {
-                row[1] for row in self._connection.execute("PRAGMA table_info(source_health)")
-            }
-            if "last_success_at" not in columns:
-                self._connection.execute(
-                    "ALTER TABLE source_health ADD COLUMN last_success_at TEXT"
-                )
-        else:
-            with self._connection.cursor() as cursor:
-                for statement in schema.split(";"):
-                    if statement.strip():
-                        cursor.execute(statement)
-                        self._connection.commit()
-                cursor.execute(
-                    "ALTER TABLE source_health ADD COLUMN IF NOT EXISTS last_success_at TEXT"
-                )
-                self._connection.commit()
+        self._connection.executescript(schema)
+        columns = {
+            row[1] for row in self._connection.execute("PRAGMA table_info(source_health)")
+        }
+        if "last_success_at" not in columns:
+            self._connection.execute(
+                "ALTER TABLE source_health ADD COLUMN last_success_at TEXT"
+            )
         self._connection.commit()
 
     def _placeholder(self) -> str:
@@ -233,6 +224,7 @@ class Store:
             cursor = self._execute("SELECT 1")
             cursor.fetchone()
             cursor.close()
+            self._connection.commit()
         return {"status": "ok", "dialect": self._dialect}
 
     def claim_collection_job(
