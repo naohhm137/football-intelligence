@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import textwrap
 import unittest
@@ -12,9 +13,12 @@ PROGRESS_MODULE = (ROOT / "app" / "static" / "js" / "progress.js").as_uri()
 
 
 def run_node(source: str) -> dict:
+    env = os.environ.copy()
+    env["TZ"] = "Asia/Shanghai"
     completed = subprocess.run(
         ["node", "--input-type=module", "--eval", source],
         cwd=ROOT,
+        env=env,
         check=True,
         capture_output=True,
         text=True,
