@@ -6,34 +6,47 @@
 
 `C:\Users\29755\DoubaoWork\chats\2026-09-27\new-chat\football_ai`
 
-## 已完成
+正式网站：
 
-- 三字段自动比赛研究 API；
-- 赛程、战绩与伤停、天气、新闻、亚盘的并行采集；
-- ailindo 证据限定解释和伪造引用拒绝；
-- “比赛之夜情报室”响应式网页、真实请求进度、失败重试、赔率图和证据链接；
-- 15 秒超时、离线、部分缺失、来源上次成功时间；
-- Render Blueprint、Supabase 幂等迁移、GitHub CI 和定时快照任务；
-- Waitress 生产模式烟雾测试：健康、三字段分析和持久化均通过；
-- 全部 60 项测试通过，编译检查与仓库密钥模式扫描通过。
+`https://football-intelligence-59lc.onrender.com`
 
-## 当前断点
+GitHub：
 
-代码已准备到可发布状态。`gh auth status` 显示尚未登录，因此尚未创建 GitHub 仓库、Supabase 项目和 Render 固定网址。
+`https://github.com/naohhm137/football-intelligence`
 
-下一步：
+## 当前线上状态
 
-1. 完成最终全套测试、编译和仓库密钥审计；
-2. 用户在 GitHub 登录界面接管认证；
-3. 创建并推送 `football-intelligence` 仓库；
-4. 用户在 Supabase 和 Render 登录并录入生产密钥；
-5. 部署后对固定网址做真实比赛烟雾测试。
+- Render Web Service 已上线，Supabase PostgreSQL 健康检查为 `ok`；
+- 用户只需填写主队、客队和带时区的开赛时间；
+- API-Football 免费密钥已配置并通过真实赛程查询；
+- Ailindo 的 `gpt-5.6-sol` 已配置，流式 JSON 解释已通过真实接口验证；
+- 真实比赛 Aurora vs San Antonio Bulo Bulo 已完成三字段烟雾测试；
+- 分析、`NO_BET_UNVALIDATED` 安全状态和 Supabase 持久化均已验证；
+- 本地 68 项测试和 Python 编译检查全部通过；
+- 生产密钥只存放在 Render 环境变量和本机凭据文件中，没有进入 Git 仓库。
+
+## 关键修复
+
+- PostgreSQL 断线自动重连；
+- 健康检查释放数据库事务；
+- Web Worker 启动时不重复执行 PostgreSQL DDL；
+- API-Football 使用供应商支持的 `date` 赛程过滤；
+- PostgreSQL 原生 `datetime` 和 JSONB 返回值统一序列化/反序列化；
+- Ailindo 按中转站要求使用 SSE 流式响应，支持分段事件和一次格式重试；
+- AI 输出限制为单行 ASCII 转义 JSON，避免中转站多行及非 ASCII SSE 兼容问题。
 
 ## 关键约束
 
-- 用户只填写主队、客队和开赛时间；
 - 没有真实亚盘时不计算 EV；
-- AI 只解释已保存证据；
-- 严格前瞻门槛未通过前保持 `NO_BET_UNVALIDATED`；
-- 生产密钥仅保存于目标平台的秘密变量；
-- 聊天中出现过的 ailindo 密钥在上线前轮换。
+- AI 只能解释已保存证据，引用未保存来源时拒绝展示；
+- 严格前瞻验证尚未达到 300 场，所有报告保持 `NO_BET_UNVALIDATED`；
+- 不宣称模型已经实现稳定盈利或超过 55% 的独立前瞻命中率；
+- 每场用户查询过的比赛进入 72h、24h、6h、90m、30m 免费快照计划。
+
+## 复验命令
+
+```powershell
+python -m compileall -q app scripts wsgi.py
+python -m unittest discover -s tests -v
+python -m scripts.smoke_test https://football-intelligence-59lc.onrender.com --home Aurora --away "San Antonio Bulo Bulo" --kickoff 2026-09-30T08:00:00+08:00
+```
