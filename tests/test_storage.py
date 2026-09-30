@@ -73,6 +73,35 @@ def make_bundle_and_report():
     return bundle, report, status
 
 
+class _FakeCursor:
+    def __init__(self):
+        self.fetchone_calls = 0
+        self.closed = False
+
+    def execute(self, _sql, _parameters=()):
+        return self
+
+    def fetchone(self):
+        self.fetchone_calls += 1
+        return (1,)
+
+    def close(self):
+        self.closed = True
+
+
+class _FakePostgresConnection:
+    def __init__(self, *, closed):
+        self.closed = closed
+        self.cursor_calls = 0
+        self.cursor_instance = _FakeCursor()
+
+    def cursor(self):
+        self.cursor_calls += 1
+        if self.closed:
+            raise RuntimeError("closed connection must not be used")
+        return self.cursor_instance
+
+
 class StorageTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -159,6 +188,22 @@ class StorageTests(unittest.TestCase):
         status = self.store.get_source_status(healthy.source)
         self.assertEqual(status["status"], "error")
         self.assertEqual(status["last_success_at"], "2026-10-03T09:00:00Z")
+
+    def test_postgres_store_reconnects_before_querying_a_closed_connection(self):
+        closed_connection = _FakePostgresConnection(closed=True)
+        replacement = _FakePostgresConnection(closed=False)
+        reconnect_calls = []
+        store = Store(
+            closed_connection,
+            "postgres",
+            reconnect=lambda: reconnect_calls.append(True) or replacement,
+        )
+
+        self.assertEqual(store.health(), {"status": "ok", "dialect": "postgres"})
+        self.assertEqual(reconnect_calls, [True])
+        self.assertEqual(closed_connection.cursor_calls, 0)
+        self.assertEqual(replacement.cursor_calls, 1)
+        self.assertTrue(replacement.cursor_instance.closed)
 
 
 if __name__ == "__main__":

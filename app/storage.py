@@ -48,9 +48,10 @@ def _canonical_json(value: Any) -> str:
 
 
 class Store:
-    def __init__(self, connection: Any, dialect: str):
+    def __init__(self, connection: Any, dialect: str, reconnect=None):
         self._connection = connection
         self._dialect = dialect
+        self._reconnect = reconnect
         self._lock = threading.RLock()
 
     @classmethod
@@ -69,8 +70,11 @@ class Store:
                 from psycopg.rows import dict_row
             except ImportError as exc:
                 raise RuntimeError("PostgreSQL 需要安装 psycopg") from exc
-            connection = psycopg.connect(database_url, row_factory=dict_row)
-            store = cls(connection, "postgres")
+            def reconnect():
+                return psycopg.connect(database_url, row_factory=dict_row)
+
+            connection = reconnect()
+            store = cls(connection, "postgres", reconnect=reconnect)
         else:
             raise ValueError("DATABASE_URL 仅支持 sqlite:///、postgres:// 或 postgresql://")
 
@@ -101,7 +105,15 @@ class Store:
     def _placeholder(self) -> str:
         return "?" if self._dialect == "sqlite" else "%s"
 
+    def _ensure_connection(self) -> None:
+        if self._dialect != "postgres" or not self._connection.closed:
+            return
+        if self._reconnect is None:
+            raise RuntimeError("PostgreSQL connection is closed")
+        self._connection = self._reconnect()
+
     def _execute(self, sql: str, parameters: tuple[Any, ...] = ()):
+        self._ensure_connection()
         cursor = self._connection.cursor()
         cursor.execute(sql, parameters)
         return cursor
@@ -400,4 +412,5 @@ class Store:
 
     def close(self) -> None:
         with self._lock:
+            self._reconnect = None
             self._connection.close()
