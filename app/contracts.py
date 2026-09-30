@@ -202,6 +202,7 @@ class AnalysisReport:
     missing_sources: tuple[str, ...] = ()
     evidence: tuple[EvidenceItem, ...] = ()
     odds: tuple[OddsSnapshot, ...] = ()
+    source_statuses: tuple[Mapping[str, Any], ...] = ()
     data_completeness: float = 0.0
     analysis_id: str | None = None
 

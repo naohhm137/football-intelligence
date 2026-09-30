@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS source_health (
     request_url TEXT,
     error_code TEXT,
     quota_remaining INTEGER,
+    last_success_at TEXT,
     updated_at TEXT NOT NULL
 );
 
@@ -52,4 +53,3 @@ CREATE TABLE IF NOT EXISTS results (
     payload_json TEXT NOT NULL,
     recorded_at TEXT NOT NULL
 );
-

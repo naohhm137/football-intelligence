@@ -155,6 +155,9 @@ class FrontendApiContractTests(unittest.TestCase):
                 import {{ sourceStatesFromReport }} from {json.dumps(PROGRESS_MODULE)};
                 console.log(JSON.stringify(sourceStatesFromReport({{
                   missing_sources: ["odds", "news"],
+                  source_statuses: [
+                    {{ source: "news", status: "error", last_success_at: "2026-10-03T08:00:00Z", error_code: "SOURCE_TIMEOUT" }}
+                  ],
                 }})));
                 """
             )
@@ -165,7 +168,9 @@ class FrontendApiContractTests(unittest.TestCase):
         self.assertEqual(states["team_context"], "success")
         self.assertEqual(states["weather"], "success")
         self.assertEqual(states["odds"], "missing")
-        self.assertEqual(states["news"], "missing")
+        self.assertEqual(states["news"], "error")
+        news = next(item for item in result if item["id"] == "news")
+        self.assertIn("上次成功", news["detail"])
 
 
 if __name__ == "__main__":

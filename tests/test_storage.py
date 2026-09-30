@@ -144,6 +144,22 @@ class StorageTests(unittest.TestCase):
             {"index": 11},
         )
 
+    def test_source_failure_preserves_last_successful_fetch_time(self):
+        _, _, healthy = make_bundle_and_report()
+        self.store.record_source_status(healthy)
+        self.store.record_source_status(
+            SourceStatus(
+                source=healthy.source,
+                status="error",
+                fetched_at="2026-10-03T10:00:00Z",
+                error_code="SOURCE_TIMEOUT",
+            )
+        )
+
+        status = self.store.get_source_status(healthy.source)
+        self.assertEqual(status["status"], "error")
+        self.assertEqual(status["last_success_at"], "2026-10-03T09:00:00Z")
+
 
 if __name__ == "__main__":
     unittest.main()

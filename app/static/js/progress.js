@@ -12,9 +12,15 @@ export function loadingSourceStates() {
 
 export function sourceStatesFromReport(report) {
   const missing = new Set(report.missing_sources ?? []);
+  const statuses = new Map((report.source_statuses ?? []).map((item) => [item.source, item]));
   return SOURCES.map((source) => ({
     ...source,
-    state: missing.has(source.id) ? "missing" : "success",
+    state: statuses.get(source.id)?.status === "error"
+      ? "error"
+      : (missing.has(source.id) ? "missing" : "success"),
+    detail: statuses.get(source.id)?.last_success_at
+      ? `上次成功 ${new Date(statuses.get(source.id).last_success_at).toLocaleString("zh-CN")}`
+      : "",
   }));
 }
 
@@ -39,6 +45,12 @@ export function renderSourceProgress(container, states) {
       state.className = "source-state";
       state.textContent = STATE_TEXT[source.state] ?? source.state;
       item.append(label, state);
+      if (source.detail) {
+        const detail = document.createElement("small");
+        detail.className = "source-detail";
+        detail.textContent = source.detail;
+        item.append(detail);
+      }
       return item;
     }),
   );

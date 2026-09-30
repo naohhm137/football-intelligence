@@ -112,6 +112,12 @@ class ResearchService:
             action = "NO_BET_INSUFFICIENT_MARKET"
         else:
             action = "NO_BET_UNVALIDATED"
+        source_statuses = []
+        for logical_name, result in results.items():
+            stored = self.store.get_source_status(result.source) or {}
+            source_statuses.append(
+                {**stored, "provider": result.source, "source": logical_name}
+            )
         report = AnalysisReport(
             fixture=fixture,
             quantitative=quantitative,
@@ -119,6 +125,7 @@ class ResearchService:
             missing_sources=tuple(missing),
             evidence=tuple(evidence),
             odds=odds,
+            source_statuses=tuple(source_statuses),
             data_completeness=completeness,
         )
         analysis_id = self.store.save_analysis(bundle, report)

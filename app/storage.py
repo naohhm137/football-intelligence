@@ -81,11 +81,21 @@ class Store:
         schema = Path(__file__).with_name("schema.sql").read_text(encoding="utf-8")
         if self._dialect == "sqlite":
             self._connection.executescript(schema)
+            columns = {
+                row[1] for row in self._connection.execute("PRAGMA table_info(source_health)")
+            }
+            if "last_success_at" not in columns:
+                self._connection.execute(
+                    "ALTER TABLE source_health ADD COLUMN last_success_at TEXT"
+                )
         else:
             with self._connection.cursor() as cursor:
                 for statement in schema.split(";"):
                     if statement.strip():
                         cursor.execute(statement)
+                cursor.execute(
+                    "ALTER TABLE source_health ADD COLUMN IF NOT EXISTS last_success_at TEXT"
+                )
         self._connection.commit()
 
     def _placeholder(self) -> str:
@@ -142,37 +152,42 @@ class Store:
 
     def record_source_status(self, status: SourceStatus) -> None:
         marker = self._placeholder()
-        values = (
-            status.source,
-            status.status,
-            status.fetched_at,
-            status.fresh_until,
-            status.request_url,
-            status.error_code,
-            status.quota_remaining,
-            _now_utc(),
-        )
-        if self._dialect == "sqlite":
-            sql = (
-                "INSERT INTO source_health "
-                "(source, status, fetched_at, fresh_until, request_url, error_code, quota_remaining, updated_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(source) DO UPDATE SET "
-                "status=excluded.status, fetched_at=excluded.fetched_at, "
-                "fresh_until=excluded.fresh_until, request_url=excluded.request_url, "
-                "error_code=excluded.error_code, quota_remaining=excluded.quota_remaining, "
-                "updated_at=excluded.updated_at"
-            )
-        else:
-            sql = (
-                "INSERT INTO source_health "
-                "(source, status, fetched_at, fresh_until, request_url, error_code, quota_remaining, updated_at) "
-                f"VALUES ({', '.join([marker] * 8)}) ON CONFLICT(source) DO UPDATE SET "
-                "status=EXCLUDED.status, fetched_at=EXCLUDED.fetched_at, "
-                "fresh_until=EXCLUDED.fresh_until, request_url=EXCLUDED.request_url, "
-                "error_code=EXCLUDED.error_code, quota_remaining=EXCLUDED.quota_remaining, "
-                "updated_at=EXCLUDED.updated_at"
-            )
         with self._lock:
+            cursor = self._execute(
+                f"SELECT last_success_at FROM source_health WHERE source={marker}",
+                (status.source,),
+            )
+            previous = cursor.fetchone()
+            cursor.close()
+            last_success_at = (
+                status.fetched_at
+                if status.status in {"ok", "stale"}
+                else (self._row_value(previous, "last_success_at") if previous else None)
+            )
+            values = (
+                status.source,
+                status.status,
+                status.fetched_at,
+                status.fresh_until,
+                status.request_url,
+                status.error_code,
+                status.quota_remaining,
+                last_success_at,
+                _now_utc(),
+            )
+            names = (
+                "source, status, fetched_at, fresh_until, request_url, error_code, "
+                "quota_remaining, last_success_at, updated_at"
+            )
+            excluded = "excluded" if self._dialect == "sqlite" else "EXCLUDED"
+            sql = (
+                f"INSERT INTO source_health ({names}) "
+                f"VALUES ({', '.join([marker] * 9)}) ON CONFLICT(source) DO UPDATE SET "
+                f"status={excluded}.status, fetched_at={excluded}.fetched_at, "
+                f"fresh_until={excluded}.fresh_until, request_url={excluded}.request_url, "
+                f"error_code={excluded}.error_code, quota_remaining={excluded}.quota_remaining, "
+                f"last_success_at={excluded}.last_success_at, updated_at={excluded}.updated_at"
+            )
             self._execute(sql, values).close()
             self._connection.commit()
 
@@ -180,7 +195,7 @@ class Store:
         marker = self._placeholder()
         with self._lock:
             cursor = self._execute(
-                f"SELECT source, status, fetched_at, fresh_until, request_url, error_code, quota_remaining, updated_at "
+                f"SELECT source, status, fetched_at, fresh_until, request_url, error_code, quota_remaining, last_success_at, updated_at "
                 f"FROM source_health WHERE source={marker}",
                 (source,),
             )
@@ -192,7 +207,7 @@ class Store:
         with self._lock:
             cursor = self._execute(
                 "SELECT source, status, fetched_at, fresh_until, request_url, "
-                "error_code, quota_remaining, updated_at "
+                "error_code, quota_remaining, last_success_at, updated_at "
                 "FROM source_health ORDER BY source"
             )
             rows = cursor.fetchall()

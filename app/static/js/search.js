@@ -6,7 +6,11 @@ import {
   sourceStatesFromReport,
 } from "./progress.js";
 
-export function createAnalysisRunner({ submit = submitMatch, onActiveChange = () => {} } = {}) {
+export function createAnalysisRunner({
+  submit = submitMatch,
+  onActiveChange = () => {},
+  timeoutMs = 15_000,
+} = {}) {
   let activeController = null;
 
   return {
@@ -14,10 +18,24 @@ export function createAnalysisRunner({ submit = submitMatch, onActiveChange = ()
       activeController?.abort();
       const controller = new AbortController();
       activeController = controller;
+      let timedOut = false;
+      const timeout = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, timeoutMs);
       onActiveChange(true);
       try {
         return await submit(query, { signal: controller.signal });
+      } catch (error) {
+        if (timedOut) {
+          throw new AnalysisApiError("实时采集超过15秒，请重试。", {
+            code: "REQUEST_TIMEOUT",
+            status: 408,
+          });
+        }
+        throw error;
       } finally {
+        clearTimeout(timeout);
         if (activeController === controller) {
           activeController = null;
           onActiveChange(false);
@@ -94,6 +112,7 @@ function boot() {
   const progress = document.querySelector("#research-progress");
   const sourceList = document.querySelector("#source-list");
   const resultSection = document.querySelector("#analysis-result");
+  const retryButton = document.querySelector("#retry-analysis");
   const serviceState = document.querySelector("#service-state");
 
   const runner = createAnalysisRunner({
@@ -118,8 +137,14 @@ function boot() {
     event.preventDefault();
     message.textContent = "";
     candidates.replaceChildren();
+    retryButton.hidden = true;
 
     if (!form.reportValidity()) return;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      message.textContent = "当前设备离线。联网后可直接重试，已填写内容会保留。";
+      retryButton.hidden = false;
+      return;
+    }
     renderSourceProgress(sourceList, loadingSourceStates());
     resultSection.hidden = true;
 
@@ -139,8 +164,11 @@ function boot() {
         return;
       }
       message.textContent = ERROR_TEXT[error.code] || error.message || "分析暂时失败，请稍后重试。";
+      retryButton.hidden = false;
     }
   });
+
+  retryButton.addEventListener("click", () => form.requestSubmit());
 }
 
 if (typeof document !== "undefined") {
