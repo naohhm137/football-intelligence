@@ -44,6 +44,45 @@ class AilindoClient:
             "Accept": "application/json",
         }
 
+    def _completion_content(self, payload: dict[str, Any]) -> str:
+        request_payload = {**payload, "stream": True}
+        response = self._transport.post(
+            f"{self._base_url}/chat/completions",
+            headers=self._headers(),
+            json=request_payload,
+            timeout=self._timeout_seconds,
+            stream=True,
+        )
+        if response.status_code >= 400:
+            raise RuntimeError(f"AI_HTTP_{response.status_code}")
+
+        if hasattr(response, "iter_lines"):
+            fragments = []
+            for raw_line in response.iter_lines(decode_unicode=True):
+                if isinstance(raw_line, bytes):
+                    raw_line = raw_line.decode("utf-8")
+                line = str(raw_line).strip()
+                if not line.startswith("data:"):
+                    continue
+                data = line.removeprefix("data:").strip()
+                if data == "[DONE]":
+                    break
+                event = json.loads(data)
+                choices = event.get("choices", [])
+                if not choices:
+                    continue
+                content = choices[0].get("delta", {}).get("content")
+                if isinstance(content, str):
+                    fragments.append(content)
+            if fragments:
+                return "".join(fragments)
+
+        document = response.json()
+        content = document["choices"][0]["message"]["content"]
+        if not isinstance(content, str):
+            raise TypeError("AI_INVALID_CONTENT")
+        return content
+
     def verify_model(self) -> AiHealth:
         try:
             response = self._transport.get(
@@ -88,26 +127,15 @@ class AilindoClient:
             )
 
         try:
-            chat_response = self._transport.post(
-                f"{self._base_url}/chat/completions",
-                headers=self._headers(),
-                json={
+            content = self._completion_content(
+                {
                     "model": selected,
                     "messages": [{"role": "user", "content": "仅回复 ok"}],
                     "temperature": 0,
                     "max_tokens": 8,
-                },
-                timeout=self._timeout_seconds,
+                }
             )
-            if chat_response.status_code >= 400:
-                return AiHealth(
-                    False,
-                    selected,
-                    discovered_models=models,
-                    error_code=f"CHAT_HTTP_{chat_response.status_code}",
-                )
-            chat_payload = chat_response.json()
-            if not chat_payload.get("choices"):
+            if not content.strip():
                 return AiHealth(
                     False,
                     selected,
@@ -181,10 +209,8 @@ class AilindoClient:
             "opposing_factors、risk_notes、citations。"
         )
         try:
-            response = self._transport.post(
-                f"{self._base_url}/chat/completions",
-                headers=self._headers(),
-                json={
+            content = self._completion_content(
+                {
                     "model": model,
                     "messages": [
                         {"role": "system", "content": system_prompt},
@@ -197,15 +223,8 @@ class AilindoClient:
                     ],
                     "temperature": 0.1,
                     "response_format": {"type": "json_object"},
-                },
-                timeout=self._timeout_seconds,
+                }
             )
-            if response.status_code >= 400:
-                raise RuntimeError(f"AI_HTTP_{response.status_code}")
-            payload = response.json()
-            content = payload["choices"][0]["message"]["content"]
-            if not isinstance(content, str):
-                raise TypeError("AI_INVALID_CONTENT")
         except (requests.RequestException, RuntimeError, TypeError, ValueError, KeyError, IndexError):
             return AiExplanation(
                 summary="AI解释暂时不可用，量化结果和来源仍然有效。",

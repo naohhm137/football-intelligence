@@ -46,6 +46,23 @@ class FakeResponse:
         return self.payload
 
 
+class FakeStreamingResponse(FakeResponse):
+    def __init__(self, fragments, status_code=200):
+        super().__init__({}, status_code)
+        self.fragments = fragments
+
+    def iter_lines(self, decode_unicode=False):
+        lines = [
+            "data: "
+            + json.dumps(
+                {"choices": [{"delta": {"content": fragment}}]}
+            )
+            for fragment in self.fragments
+        ]
+        lines.append("data: [DONE]")
+        return lines
+
+
 class FakeTransport:
     def __init__(self, *, get_responses=None, post_responses=None):
         self.get_responses = list(get_responses or [])
@@ -60,9 +77,15 @@ class FakeTransport:
             raise response
         return response
 
-    def post(self, url, *, headers, json, timeout):
+    def post(self, url, *, headers, json, timeout, stream=False):
         self.post_calls.append(
-            {"url": url, "headers": headers, "json": json, "timeout": timeout}
+            {
+                "url": url,
+                "headers": headers,
+                "json": json,
+                "timeout": timeout,
+                "stream": stream,
+            }
         )
         response = self.post_responses.pop(0)
         if isinstance(response, Exception):
@@ -75,6 +98,34 @@ def completion(content):
 
 
 class AilindoClientTests(unittest.TestCase):
+    def test_streaming_completion_is_assembled(self):
+        document = {
+            "summary": "Arsenal slightly favoured.",
+            "supporting_factors": [],
+            "opposing_factors": [],
+            "risk_notes": ["Research only"],
+            "citations": [],
+        }
+        encoded = json.dumps(document)
+        transport = FakeTransport(
+            post_responses=[
+                FakeStreamingResponse([encoded[:20], encoded[20:]])
+            ]
+        )
+        client = AilindoClient(
+            "https://gateway.test/v1",
+            "secret-value",
+            "new-provider-model",
+            transport=transport,
+        )
+
+        explanation = client.explain(REPORT)
+
+        self.assertTrue(transport.post_calls[0]["stream"])
+        self.assertTrue(transport.post_calls[0]["json"]["stream"])
+        self.assertTrue(explanation.trusted_json)
+        self.assertEqual(explanation.summary, document["summary"])
+
     def test_configured_model_is_sent_verbatim(self):
         payload = json.dumps(
             {
