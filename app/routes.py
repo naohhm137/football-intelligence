@@ -91,12 +91,25 @@ def register_routes(app: Flask) -> None:
 
     @app.get("/api/health")
     def health():
+        store = app.extensions["research_store"]
+        try:
+            database = store.health()
+        except Exception:
+            database = {"status": "error"}
+        sources = store.list_source_statuses() if database["status"] == "ok" else []
         return jsonify(
             {
-                "status": "ok",
-                "model_version": "8.0.0-research",
-                "validated_for_betting": False,
-                "ai_configured": app.extensions.get("ailindo_client") is not None,
+                "status": "ok" if database["status"] == "ok" else "degraded",
+                "version": "8.0.0-research",
+                "database": database,
+                "ai": {
+                    "configured": app.extensions.get("ailindo_client") is not None,
+                    "validated_for_betting": False,
+                },
+                "sources": {
+                    "known": len(sources),
+                    "healthy": sum(item["status"] in {"ok", "stale"} for item in sources),
+                },
             }
         )
 
@@ -104,4 +117,3 @@ def register_routes(app: Flask) -> None:
     def source_health():
         statuses = app.extensions["research_store"].list_source_statuses()
         return jsonify({"sources": statuses})
-

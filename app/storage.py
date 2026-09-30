@@ -214,6 +214,13 @@ class Store:
             cursor.close()
         return [dict(row) for row in rows]
 
+    def health(self) -> dict[str, str]:
+        with self._lock:
+            cursor = self._execute("SELECT 1")
+            cursor.fetchone()
+            cursor.close()
+        return {"status": "ok", "dialect": self._dialect}
+
     def save_analysis(
         self, bundle: ResearchBundle, report: AnalysisReport
     ) -> str:

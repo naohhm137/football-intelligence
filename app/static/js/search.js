@@ -126,7 +126,7 @@ function boot() {
   getServiceHealth()
     .then((health) => {
       serviceState.dataset.state = "online";
-      serviceState.textContent = health.ai_configured ? "数据与 AI 已连接" : "数据服务已连接";
+      serviceState.textContent = health.ai?.configured ? "数据与 AI 已连接" : "数据服务已连接";
     })
     .catch(() => {
       serviceState.dataset.state = "offline";

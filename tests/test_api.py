@@ -121,7 +121,8 @@ class ApiTests(unittest.TestCase):
         sources = self.client.get("/api/source-health")
 
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(response.get_json()["validated_for_betting"])
+        self.assertEqual(response.get_json()["status"], "ok")
+        self.assertFalse(response.get_json()["ai"]["validated_for_betting"])
         self.assertEqual(sources.status_code, 200)
         self.assertNotIn("api_key", sources.get_data(as_text=True))
 
