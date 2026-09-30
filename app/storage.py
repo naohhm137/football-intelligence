@@ -5,12 +5,12 @@ import hashlib
 import json
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
 
-from app.contracts import AnalysisReport, ResearchBundle, SourceStatus
+from app.contracts import AnalysisReport, ResearchBundle, ResolvedFixture, SourceStatus
 
 
 def _now_utc() -> str:
@@ -220,6 +220,98 @@ class Store:
             cursor.fetchone()
             cursor.close()
         return {"status": "ok", "dialect": self._dialect}
+
+    def claim_collection_job(
+        self, fixture_id: int, checkpoint_minutes: int, claimed_at: str
+    ) -> bool:
+        claimed = _parse_utc(claimed_at)
+        cutoff = (claimed - timedelta(minutes=15)).isoformat(
+            timespec="seconds"
+        ).replace("+00:00", "Z")
+        marker = self._placeholder()
+        insert = (
+            "INSERT INTO collection_jobs "
+            "(fixture_id, checkpoint_minutes, status, claimed_at) "
+            f"VALUES ({marker}, {marker}, {marker}, {marker}) "
+            "ON CONFLICT(fixture_id, checkpoint_minutes) DO NOTHING"
+        )
+        retry = (
+            "UPDATE collection_jobs SET status='running', claimed_at="
+            f"{marker}, completed_at=NULL, error_code=NULL "
+            f"WHERE fixture_id={marker} AND checkpoint_minutes={marker} "
+            f"AND status='failed' AND claimed_at<={marker}"
+        )
+        with self._lock:
+            cursor = self._execute(
+                insert, (fixture_id, checkpoint_minutes, "running", claimed_at)
+            )
+            inserted = cursor.rowcount == 1
+            cursor.close()
+            if not inserted:
+                cursor = self._execute(
+                    retry, (claimed_at, fixture_id, checkpoint_minutes, cutoff)
+                )
+                inserted = cursor.rowcount == 1
+                cursor.close()
+            self._connection.commit()
+        return inserted
+
+    def finish_collection_job(
+        self,
+        fixture_id: int,
+        checkpoint_minutes: int,
+        *,
+        completed_at: str,
+        error_code: str | None = None,
+    ) -> None:
+        _parse_utc(completed_at)
+        marker = self._placeholder()
+        status = "failed" if error_code else "success"
+        with self._lock:
+            self._execute(
+                "UPDATE collection_jobs SET status="
+                f"{marker}, completed_at={marker}, error_code={marker} "
+                f"WHERE fixture_id={marker} AND checkpoint_minutes={marker}",
+                (status, completed_at, error_code, fixture_id, checkpoint_minutes),
+            ).close()
+            self._connection.commit()
+
+    def track_fixture(self, fixture: ResolvedFixture) -> None:
+        payload = _canonical_json(fixture)
+        marker = self._placeholder()
+        excluded = "excluded" if self._dialect == "sqlite" else "EXCLUDED"
+        sql = (
+            "INSERT INTO tracked_fixtures "
+            f"(fixture_id, kickoff_utc, payload_json, updated_at) VALUES ({', '.join([marker] * 4)}) "
+            "ON CONFLICT(fixture_id) DO UPDATE SET "
+            f"kickoff_utc={excluded}.kickoff_utc, payload_json={excluded}.payload_json, "
+            f"updated_at={excluded}.updated_at"
+        )
+        with self._lock:
+            self._execute(
+                sql,
+                (fixture.fixture_id, fixture.kickoff_utc, payload, _now_utc()),
+            ).close()
+            self._connection.commit()
+
+    def list_tracked_fixtures(
+        self, *, now: str, horizon_hours: int = 96
+    ) -> list[dict[str, Any]]:
+        start = _parse_utc(now)
+        end = start + timedelta(hours=horizon_hours)
+        start_iso = start.isoformat(timespec="seconds").replace("+00:00", "Z")
+        end_iso = end.isoformat(timespec="seconds").replace("+00:00", "Z")
+        marker = self._placeholder()
+        with self._lock:
+            cursor = self._execute(
+                "SELECT payload_json FROM tracked_fixtures "
+                f"WHERE kickoff_utc>={marker} AND kickoff_utc<={marker} "
+                "ORDER BY kickoff_utc, fixture_id",
+                (start_iso, end_iso),
+            )
+            rows = cursor.fetchall()
+            cursor.close()
+        return [json.loads(self._row_value(row, "payload_json")) for row in rows]
 
     def save_analysis(
         self, bundle: ResearchBundle, report: AnalysisReport

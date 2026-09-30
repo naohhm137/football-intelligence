@@ -53,3 +53,20 @@ CREATE TABLE IF NOT EXISTS results (
     payload_json TEXT NOT NULL,
     recorded_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS tracked_fixtures (
+    fixture_id INTEGER PRIMARY KEY,
+    kickoff_utc TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS collection_jobs (
+    fixture_id INTEGER NOT NULL,
+    checkpoint_minutes INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    claimed_at TEXT NOT NULL,
+    completed_at TEXT,
+    error_code TEXT,
+    PRIMARY KEY (fixture_id, checkpoint_minutes)
+);

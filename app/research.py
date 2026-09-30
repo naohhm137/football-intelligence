@@ -55,6 +55,7 @@ class ResearchService:
             raise FixtureResolutionError("FIXTURE_NOT_FOUND", fixture)
         if not isinstance(fixture, ResolvedFixture):
             raise RuntimeError("INVALID_FIXTURE_RESOLUTION")
+        self.store.track_fixture(fixture)
 
         clients = {
             "weather": self.weather,

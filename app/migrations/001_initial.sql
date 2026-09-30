@@ -64,6 +64,13 @@ CREATE TABLE IF NOT EXISTS collection_jobs (
     PRIMARY KEY (fixture_id, checkpoint_minutes)
 );
 
+CREATE TABLE IF NOT EXISTS tracked_fixtures (
+    fixture_id BIGINT PRIMARY KEY,
+    kickoff_utc TIMESTAMPTZ NOT NULL,
+    payload_json JSONB NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_fixture_aliases_fixture_id
     ON fixture_aliases(fixture_id);
 CREATE INDEX IF NOT EXISTS idx_source_health_updated_at
@@ -74,3 +81,5 @@ CREATE INDEX IF NOT EXISTS idx_odds_snapshots_captured_at
     ON odds_snapshots(captured_at DESC);
 CREATE INDEX IF NOT EXISTS idx_collection_jobs_status
     ON collection_jobs(status, claimed_at);
+CREATE INDEX IF NOT EXISTS idx_tracked_fixtures_kickoff
+    ON tracked_fixtures(kickoff_utc);
