@@ -97,9 +97,11 @@ class Store:
                 for statement in schema.split(";"):
                     if statement.strip():
                         cursor.execute(statement)
+                        self._connection.commit()
                 cursor.execute(
                     "ALTER TABLE source_health ADD COLUMN IF NOT EXISTS last_success_at TEXT"
                 )
+                self._connection.commit()
         self._connection.commit()
 
     def _placeholder(self) -> str:

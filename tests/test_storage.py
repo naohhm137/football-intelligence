@@ -102,6 +102,32 @@ class _FakePostgresConnection:
         return self.cursor_instance
 
 
+class _LockSensitivePostgresConnection:
+    def __init__(self):
+        self.closed = False
+        self.pending_statement = False
+        self.commit_calls = 0
+
+    def cursor(self):
+        return self
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, _exc_type, _exc, _traceback):
+        return False
+
+    def execute(self, _sql, _parameters=()):
+        if self.pending_statement:
+            raise RuntimeError("statement timeout waiting for an unreleased DDL lock")
+        self.pending_statement = True
+        return self
+
+    def commit(self):
+        self.commit_calls += 1
+        self.pending_statement = False
+
+
 class StorageTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -204,6 +230,15 @@ class StorageTests(unittest.TestCase):
         self.assertEqual(closed_connection.cursor_calls, 0)
         self.assertEqual(replacement.cursor_calls, 1)
         self.assertTrue(replacement.cursor_instance.closed)
+
+    def test_postgres_schema_setup_releases_each_ddl_lock_before_continuing(self):
+        connection = _LockSensitivePostgresConnection()
+        store = Store(connection, "postgres")
+
+        store._initialize_schema()
+
+        self.assertGreater(connection.commit_calls, 1)
+        self.assertFalse(connection.pending_statement)
 
 
 if __name__ == "__main__":
