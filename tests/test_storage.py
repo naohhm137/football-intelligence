@@ -116,6 +116,28 @@ class _NoRuntimeDdlPostgresConnection:
         raise AssertionError("Postgres migrations must not run during web startup")
 
 
+class _PostgresCacheConnection:
+    closed = False
+
+    def __init__(self, row):
+        self.row = row
+
+    def cursor(self):
+        row = self.row
+
+        class Cursor:
+            def execute(self, _sql, _parameters=()):
+                return self
+
+            def fetchone(self):
+                return row
+
+            def close(self):
+                pass
+
+        return Cursor()
+
+
 class StorageTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -137,6 +159,22 @@ class StorageTests(unittest.TestCase):
         self.assertEqual(hit, {"id": 7, "nested": ["original"]})
         self.assertIsNone(
             self.store.get_cache("fixture:a", now="2026-09-29T01:00:00Z")
+        )
+
+    def test_postgres_cache_accepts_native_timestamp_values(self):
+        connection = _PostgresCacheConnection(
+            {
+                "payload_json": {"id": 7},
+                "expires_at": datetime(
+                    2026, 9, 29, 2, 0, tzinfo=timezone.utc
+                ),
+            }
+        )
+        store = Store(connection, "postgres")
+
+        self.assertEqual(
+            store.get_cache("fixture:a", now="2026-09-29T01:00:00Z"),
+            {"id": 7},
         )
 
     def test_analysis_is_idempotent_and_preserves_original_payload(self):

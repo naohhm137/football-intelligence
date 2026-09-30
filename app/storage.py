@@ -19,9 +19,12 @@ def _now_utc() -> str:
     )
 
 
-def _parse_utc(value: str) -> datetime:
-    normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
-    parsed = datetime.fromisoformat(normalized)
+def _parse_utc(value: str | datetime) -> datetime:
+    if isinstance(value, datetime):
+        parsed = value
+    else:
+        normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
+        parsed = datetime.fromisoformat(normalized)
     if parsed.tzinfo is None or parsed.utcoffset() is None:
         raise ValueError("时间必须包含时区")
     return parsed.astimezone(timezone.utc)
@@ -51,6 +54,12 @@ def _canonical_json(value: Any) -> str:
         separators=(",", ":"),
         allow_nan=False,
     )
+
+
+def _decode_json_column(value: Any) -> Any:
+    if isinstance(value, (str, bytes, bytearray)):
+        return json.loads(value)
+    return value
 
 
 class Store:
@@ -159,7 +168,7 @@ class Store:
             cursor.close()
         if row is None or _parse_utc(self._row_value(row, "expires_at")) <= current_time:
             return None
-        return json.loads(self._row_value(row, "payload_json"))
+        return _decode_json_column(self._row_value(row, "payload_json"))
 
     def record_source_status(self, status: SourceStatus) -> None:
         marker = self._placeholder()
@@ -323,7 +332,9 @@ class Store:
             )
             rows = cursor.fetchall()
             cursor.close()
-        return [json.loads(self._row_value(row, "payload_json")) for row in rows]
+        return [
+            _decode_json_column(self._row_value(row, "payload_json")) for row in rows
+        ]
 
     def save_analysis(
         self, bundle: ResearchBundle, report: AnalysisReport
@@ -382,7 +393,7 @@ class Store:
             cursor.close()
         if row is None:
             return None
-        document = json.loads(self._row_value(row, "payload_json"))
+        document = _decode_json_column(self._row_value(row, "payload_json"))
         document["analysis_id"] = analysis_id
         return document
 
@@ -408,7 +419,9 @@ class Store:
             )
             rows = cursor.fetchall()
             cursor.close()
-        return [json.loads(self._row_value(row, "payload_json")) for row in rows]
+        return [
+            _decode_json_column(self._row_value(row, "payload_json")) for row in rows
+        ]
 
     def close(self) -> None:
         with self._lock:
