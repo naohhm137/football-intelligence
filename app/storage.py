@@ -30,6 +30,12 @@ def _parse_utc(value: str) -> datetime:
 def _jsonable(value: Any) -> Any:
     if dataclasses.is_dataclass(value):
         return {field.name: _jsonable(getattr(value, field.name)) for field in dataclasses.fields(value)}
+    if isinstance(value, datetime):
+        if value.tzinfo is not None and value.utcoffset() is not None:
+            return value.astimezone(timezone.utc).isoformat(
+                timespec="seconds"
+            ).replace("+00:00", "Z")
+        return value.isoformat(timespec="seconds")
     if isinstance(value, dict):
         return {str(key): _jsonable(item) for key, item in value.items()}
     if isinstance(value, (tuple, list)):

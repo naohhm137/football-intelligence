@@ -2,6 +2,8 @@ import json
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
+from datetime import datetime, timezone
 from pathlib import Path
 
 from app.contracts import (
@@ -149,6 +151,28 @@ class StorageTests(unittest.TestCase):
         self.assertEqual(saved["report"]["action"], "NO_BET_UNVALIDATED")
         self.assertEqual(len(self.store.list_evidence(first)), 1)
         self.assertEqual(self.store.list_analysis_ids().count(first), 1)
+
+    def test_analysis_serializes_postgres_timestamp_values(self):
+        bundle, report, _ = make_bundle_and_report()
+        report = replace(
+            report,
+            source_statuses=(
+                {
+                    "source": "weather",
+                    "updated_at": datetime(
+                        2026, 10, 3, 9, 0, tzinfo=timezone.utc
+                    ),
+                },
+            ),
+        )
+
+        analysis_id = self.store.save_analysis(bundle, report)
+        saved = self.store.get_analysis(analysis_id)
+
+        self.assertEqual(
+            saved["report"]["source_statuses"][0]["updated_at"],
+            "2026-10-03T09:00:00Z",
+        )
 
     def test_cache_and_source_health_survive_reopening_database(self):
         _, _, status = make_bundle_and_report()
