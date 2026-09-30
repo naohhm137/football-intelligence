@@ -9,6 +9,7 @@
     <link rel="preload" href="/static/assets/stadium-night.png" as="image">
     <link rel="stylesheet" href="/static/css/tokens.css">
     <link rel="stylesheet" href="/static/css/app.css">
+    <link rel="stylesheet" href="/static/css/results.css">
   </head>
   <body>
     <div class="app-shell">
@@ -72,9 +73,26 @@
           </section>
 
           <section class="analysis-result" id="analysis-result" aria-live="polite" aria-labelledby="result-title" hidden>
-            <h2 id="result-title">比赛研究结果</h2>
-            <div id="result-summary"></div>
-            <section aria-labelledby="evidence-title">
+            <div id="fixture-identity" data-reveal></div>
+            <p class="validation-status" id="validation-status" data-reveal></p>
+            <section class="result-panel" id="result-summary" data-reveal aria-label="比赛结果概率"></section>
+            <section class="result-panel" id="asian-summary" data-reveal aria-labelledby="asian-title">
+              <h3 id="asian-title">亚盘研究</h3>
+            </section>
+            <figure class="odds-figure" id="odds-figure" data-reveal>
+              <figcaption>真实亚盘快照时间线</figcaption>
+              <svg id="odds-timeline" role="img"></svg>
+            </figure>
+            <section class="explanation-panel" data-reveal aria-labelledby="explanation-title">
+              <h3 id="explanation-title">证据解读</h3>
+              <p id="ai-summary"></p>
+              <div class="factor-groups" id="factor-groups"></div>
+            </section>
+            <section class="missing-panel" data-reveal aria-labelledby="missing-title">
+              <h3 id="missing-title">本轮数据状态</h3>
+              <ul id="missing-data"></ul>
+            </section>
+            <section class="evidence-panel" data-reveal aria-labelledby="evidence-title">
               <h3 id="evidence-title">证据来源</h3>
               <ul class="evidence-list" id="evidence-list"></ul>
             </section>
@@ -87,5 +105,6 @@
       </footer>
     </div>
     <script type="module" src="/static/js/search.js"></script>
+    <script type="module" src="/static/js/results.js"></script>
   </body>
 </html>

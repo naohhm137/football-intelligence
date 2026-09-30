@@ -201,6 +201,7 @@ class AnalysisReport:
     action: str
     missing_sources: tuple[str, ...] = ()
     evidence: tuple[EvidenceItem, ...] = ()
+    odds: tuple[OddsSnapshot, ...] = ()
     data_completeness: float = 0.0
     analysis_id: str | None = None
 
@@ -221,4 +222,3 @@ class AiExplanation:
     risk_notes: tuple[str, ...] = ()
     citations: tuple[str, ...] = ()
     trusted_json: bool = True
-

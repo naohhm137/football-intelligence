@@ -1,0 +1,132 @@
+.analysis-result {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.6fr);
+  gap: 22px;
+}
+
+.analysis-result[hidden] { display: none; }
+
+#fixture-identity,
+.validation-status {
+  grid-column: 1 / -1;
+}
+
+.fixture-meta,
+.model-label {
+  margin: 0 0 8px;
+  color: var(--text-500);
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+}
+
+.fixture-title {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: clamp(2rem, 5vw, 4.5rem);
+  font-weight: 670;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+
+.validation-status {
+  margin: 0;
+  padding: 14px 18px;
+  border-left: 3px solid var(--warning-400);
+  color: var(--warning-400);
+  background: rgb(228 180 95 / 0.08);
+  font-family: var(--font-ui);
+  font-weight: 650;
+}
+
+.validation-status[data-validated="true"] {
+  border-color: var(--success-400);
+  color: var(--success-400);
+  background: rgb(118 209 155 / 0.08);
+}
+
+.result-panel,
+.explanation-panel,
+.missing-panel,
+.evidence-panel,
+.odds-figure {
+  margin: 0;
+  padding: clamp(20px, 3vw, 32px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.result-panel h3,
+.explanation-panel h3,
+.missing-panel h3,
+.evidence-panel h3,
+.odds-figure figcaption {
+  margin: 0 0 18px;
+  font-family: var(--font-ui);
+  font-size: 1rem;
+}
+
+.probability-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--line);
+}
+
+.probability-item {
+  display: grid;
+  gap: 8px;
+  padding: 20px 12px 0 0;
+}
+
+.probability-label { color: var(--text-300); }
+.probability-value {
+  font-family: var(--font-ui);
+  font-size: clamp(1.7rem, 4vw, 3.4rem);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.asian-headline { margin: 0 0 18px; color: var(--text-300); }
+.empty-state, .muted { color: var(--text-500); }
+
+.odds-figure { grid-column: 1 / -1; overflow: hidden; }
+#odds-timeline { display: block; width: 100%; min-height: 260px; }
+.chart-divider { stroke: var(--line-strong); }
+.chart-line, .chart-price { stroke-width: 2; vector-effect: non-scaling-stroke; }
+.chart-price { stroke-dasharray: 5 5; }
+.chart-axis-label, .chart-legend { font-family: var(--font-ui); font-size: 12px; }
+.chart-axis-label { fill: var(--text-500); }
+
+.explanation-panel { grid-column: 1; }
+#ai-summary { margin: 0 0 24px; color: var(--text-300); font-size: 1.08rem; }
+.factor-groups { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.factor-group h4 { margin: 0 0 10px; font-family: var(--font-ui); font-size: 0.85rem; }
+.factor-list, #missing-data { margin: 0; padding-left: 18px; color: var(--text-300); }
+.factor-list li + li, #missing-data li + li { margin-top: 8px; }
+
+.missing-panel { grid-column: 2; }
+#missing-data .complete { color: var(--success-400); }
+.evidence-panel { grid-column: 1 / -1; }
+.evidence-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--line); }
+.evidence-item {
+  display: grid;
+  gap: 5px;
+  min-height: 78px;
+  padding: 16px;
+  background: var(--ink-900);
+}
+.evidence-link { color: var(--text-100); font-weight: 600; }
+.evidence-meta { color: var(--text-500); font-size: 0.78rem; }
+
+@media (max-width: 760px) {
+  .analysis-result { grid-template-columns: 1fr; }
+  .analysis-result > * { grid-column: 1; }
+  .factor-groups, .evidence-list { grid-template-columns: 1fr; }
+  .probability-value { font-size: clamp(1.45rem, 8vw, 2.3rem); }
+  #odds-timeline { min-height: 210px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] { opacity: 1; transform: none; }
+}

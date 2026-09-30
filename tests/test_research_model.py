@@ -166,6 +166,7 @@ class ResearchServiceTests(unittest.TestCase):
         report = service.analyze(QUERY)
 
         self.assertEqual(report.action, "NO_BET_UNVALIDATED")
+        self.assertEqual([item.bookmaker for item in report.odds], ["Book A", "Book B"])
         self.assertFalse(report.quantitative.validated_for_betting)
         self.assertEqual(set(report.quantitative.asian_state_probabilities), {
             "full_loss", "half_loss", "push", "half_win", "full_win"

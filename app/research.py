@@ -118,6 +118,7 @@ class ResearchService:
             action=action,
             missing_sources=tuple(missing),
             evidence=tuple(evidence),
+            odds=odds,
             data_completeness=completeness,
         )
         analysis_id = self.store.save_analysis(bundle, report)
