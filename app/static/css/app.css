@@ -299,6 +299,95 @@ a {
   scroll-margin-top: 24px;
 }
 
+.research-progress {
+  position: relative;
+  overflow: hidden;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.research-progress::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: var(--flood-400);
+  box-shadow: 0 0 28px 8px rgb(246 190 87 / 0.22);
+  content: "";
+  opacity: 0;
+}
+
+.research-progress[data-active="true"]::before {
+  opacity: 1;
+  animation: research-scan 1.8s var(--ease-in-out) infinite;
+}
+
+@keyframes research-scan {
+  from { transform: translateX(0); }
+  to { transform: translateX(min(1238px, calc(100vw - 42px))); }
+}
+
+.source-list {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--line);
+}
+
+.source-item {
+  display: grid;
+  gap: 7px;
+  min-height: 92px;
+  padding: 16px;
+  background: var(--ink-900);
+  font-family: var(--font-ui);
+}
+
+.source-state {
+  color: var(--text-500);
+  font-size: 0.78rem;
+}
+
+.source-item[data-state="success"] .source-state { color: var(--success-400); }
+.source-item[data-state="missing"] .source-state { color: var(--warning-400); }
+.source-item[data-state="error"] .source-state { color: var(--danger-400); }
+
+.fixture-candidates:empty {
+  display: none;
+}
+
+.fixture-candidates > p {
+  margin: 4px 0 10px;
+  color: var(--text-300);
+}
+
+.candidate-list {
+  display: grid;
+  gap: 8px;
+}
+
+.candidate-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgb(5 11 12 / 0.78);
+  cursor: pointer;
+}
+
+.candidate-option input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--flood-400);
+}
+
 .research-progress[hidden],
 .analysis-result[hidden] {
   display: none;
@@ -389,6 +478,16 @@ a {
   .site-footer {
     width: min(100% - 24px, 1240px);
   }
+
+  .source-list {
+    grid-template-columns: 1fr;
+  }
+
+  .source-item {
+    grid-template-columns: 1fr auto;
+    min-height: 54px;
+    align-items: center;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -403,5 +502,10 @@ a {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .research-progress[data-active="true"]::before {
+    animation: none;
+    opacity: 0.7;
   }
 }
